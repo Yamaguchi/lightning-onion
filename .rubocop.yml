@@ -1,0 +1,26 @@
+Metrics/AbcSize:
+  Enabled: false
+
+Metrics/BlockLength:
+  Enabled: false
+
+Metrics/LineLength:
+  Max: 120
+
+Metrics/MethodLength:
+  Max: 30
+
+Style/Documentation:
+  Enabled: false
+
+Style/LambdaCall:
+  Enabled: false
+
+Style/SymbolArray:
+  MinSize: 100
+
+Style/WordArray:
+  MinSize: 100
+
+AllCops:
+  TargetRubyVersion: 2.4.1

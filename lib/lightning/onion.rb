@@ -1,4 +1,6 @@
-require "lightning/onion/version"
+# frozen_string_literal: true
+
+require 'lightning/onion/version'
 
 module Lightning
   module Onion
