@@ -3,17 +3,18 @@
 require 'spec_helper'
 
 describe Lightning::Onion::Sphinx do
+  let(:public_keys) do
+    [
+      '02eec7245d6b7d2ccb30380bfbe2a3648cd7a942653f5aa340edcea1f283686619',
+      '0324653eac434488002cc06bbfb7f10fe18991e35f9fe4302dbea6d2353dc0ab1c',
+      '027f31ebc5462c1fdce1b737ecff52d37d75dea43ce11c74d25aa297165faa2007',
+      '032c0b7cf95324a07d05398b240174dc0c2be444d96b159aa6c7f7b1e668680991',
+      '02edabbd16b41c8371b92ef2f04c1185b4f03b6dcd52ba9b78d9d7c89c8f221145',
+    ]
+  end
+  let(:session_key) { '4141414141414141414141414141414141414141414141414141414141414141' }
+
   describe '.compute_ephemereal_public_keys_and_shared_secrets' do
-    let(:public_keys) do
-      [
-        '02eec7245d6b7d2ccb30380bfbe2a3648cd7a942653f5aa340edcea1f283686619',
-        '0324653eac434488002cc06bbfb7f10fe18991e35f9fe4302dbea6d2353dc0ab1c',
-        '027f31ebc5462c1fdce1b737ecff52d37d75dea43ce11c74d25aa297165faa2007',
-        '032c0b7cf95324a07d05398b240174dc0c2be444d96b159aa6c7f7b1e668680991',
-        '02edabbd16b41c8371b92ef2f04c1185b4f03b6dcd52ba9b78d9d7c89c8f221145',
-      ]
-    end
-    let(:session_key) { '4141414141414141414141414141414141414141414141414141414141414141' }
     subject { described_class.compute_ephemereal_public_keys_and_shared_secrets(session_key, public_keys) }
 
     # hop_shared_secret[0] = 0x53eb63ea8a3fec3b3cd433b85cd62a4b145e1dda09391b348c4e1cd36a03ea66
@@ -45,5 +46,38 @@ describe Lightning::Onion::Sphinx do
     it { expect(subject[1][3]).to eq '21e13c2d7cfe7e18836df50872466117a295783ab8aab0e7ecc8c725503ad02d' }
     it { expect(subject[0][4]).to eq '03a214ebd875aab6ddfd77f22c5e7311d7f77f17a169e599f157bbcdae8bf071f4' }
     it { expect(subject[1][4]).to eq 'b5756b9b542727dbafc6765a49488b023a725d631af688fc031217e90770c328' }
+  end
+
+  describe '.generate_filler' do
+    # filler =
+    # 0xc6b008cf6414ed6e4c42c291eb505e9f22f5fe7d0ecdd15a833f4d016ac974
+    # d33adc6ea3293e20859e87ebfb937ba406abd025d14af692b12e9c9c2adbe307
+    # a679779259676211c071e614fdb386d1ff02db223a5b2fae03df68d321c7b29f
+    # 7c7240edd3fa1b7cb6903f89dc01abf41b2eb0b49b6b8d73bb0774b58204c0d0
+    # e96d3cce45ad75406be0bc009e327b3e712a4bd178609c00b41da2daf8a4b0e1
+    # 319f07a492ab4efb056f0f599f75e6dc7e0d10ce1cf59088ab6e873de3773438
+    # 80f7a24f0e36731a0b72092f8d5bc8cd346762e93b2bf203d00264e4bc136fc1
+    # 42de8f7b69154deb05854ea88e2d7506222c95ba1aab065c8a851391377d3406
+    # a35a9af3ac
+    let(:shared_secrets) do
+      described_class.compute_ephemereal_public_keys_and_shared_secrets(session_key, public_keys)[1]
+    end
+    let(:key_type) { 'rho' }
+    let(:expected) do
+      'c6b008cf6414ed6e4c42c291eb505e9f22f5fe7d0ecdd15a833f4d016ac974d3' \
+      '3adc6ea3293e20859e87ebfb937ba406abd025d14af692b12e9c9c2adbe307a6' \
+      '79779259676211c071e614fdb386d1ff02db223a5b2fae03df68d321c7b29f7c' \
+      '7240edd3fa1b7cb6903f89dc01abf41b2eb0b49b6b8d73bb0774b58204c0d0e9' \
+      '6d3cce45ad75406be0bc009e327b3e712a4bd178609c00b41da2daf8a4b0e131' \
+      '9f07a492ab4efb056f0f599f75e6dc7e0d10ce1cf59088ab6e873de377343880' \
+      'f7a24f0e36731a0b72092f8d5bc8cd346762e93b2bf203d00264e4bc136fc142' \
+      'de8f7b69154deb05854ea88e2d7506222c95ba1aab065c8a851391377d3406a3' \
+      '5a9af3ac'
+    end
+    let(:payload_length) { 33 }
+    let(:mac_length) { 32 }
+    subject { described_class.generate_filler(key_type, shared_secrets[0...-1], payload_length + mac_length, 20) }
+    it { expect(subject.size).to eq expected.size }
+    it { is_expected.to eq expected }
   end
 end

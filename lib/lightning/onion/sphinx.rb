@@ -48,6 +48,38 @@ module Lightning
       def self.compute_blinding_factor(public_key, secret)
         Bitcoin.sha256(public_key.htb + secret.htb).bth
       end
+
+      def self.generate_filler(key_type, shared_secrets, hop_size, max_number_of_hops = 20)
+        shared_secrets.inject([]) do |padding, secret|
+          key = generate_key(key_type, secret)
+          padding1 = padding + [0] * hop_size
+          stream = generate_cipher_stream(key, hop_size * (max_number_of_hops + 1))
+          stream = stream.reverse[0..padding1.size].reverse.unpack('c*')
+          new_padding = xor(padding1, stream)
+          new_padding
+        end.pack('C*').bth
+      end
+
+      module KeyType
+        RHO = 0x72686F
+        MU = 0x6d75
+        UM = 0x756d
+      end
+
+      # Key generation
+      def self.generate_key(key_type, secret)
+        OpenSSL::HMAC.digest(OpenSSL::Digest::SHA256.new, key_type, secret.htb)
+      end
+
+      def self.generate_cipher_stream(key, length)
+        # FIXME: ChaCha20Poly1305Legacy encrypt should be 0-counter
+        cipher = RbNaCl::AEAD::ChaCha20Poly1305Legacy.new(key)
+        cipher.encrypt("\x00" * 8, "\x00" * length, '').bth[0..-32].htb
+      end
+
+      def self.xor(a, b)
+        a.zip(b).map { |x, y| ((x ^ y) & 0xff) }
+      end
     end
   end
 end
