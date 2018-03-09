@@ -3,6 +3,26 @@
 module Lightning
   module Onion
     module Sphinx
+      VERSION = "\x00"
+      PAYLOAD_LENGTH = 33
+      MAC_LENGTH = 32
+      MAX_HOPS = 20
+
+      def self.make_packet(session_key, public_keys, payloads, associated_data)
+        ephemereal_public_keys, shared_secrets = compute_ephemereal_public_keys_and_shared_secrets(session_key, public_keys)
+        filler = generate_filler('rho', shared_secrets[0...-1], PAYLOAD_LENGTH + MAC_LENGTH, MAX_HOPS)
+        last_packet = make_next_packet(payloads.last, associated_data, ephemereal_public_keys.last, shared_secrets.last, LAST_PACKET, filler)
+
+        def loop(hop_payloads, keys, shared_secrets, packet)
+          return packet if hop_payloads.empaty?
+          next_packet = make_packet(hop_payloads.last, associated_data, keys.last, shared_secrets.last, packet)
+          loop(hop_payloads[0...-1], keys[0...-1], shared_secrets[0...-1], next_packet)
+        end
+
+        packet = loop(payloads[0...-1], ephemereal_public_keys[0...-1], shared_secrets[0...-1], last_packet)
+        [packet, shared_secrets.zip(public_keys)]
+      end
+
       def self.compute_ephemereal_public_keys_and_shared_secrets(session_key, public_keys)
         point = ECDSA::Group::Secp256k1.generator
         generator_pubkey = ECDSA::Format::PointOctetString.encode(point, compression: true)
@@ -54,6 +74,7 @@ module Lightning
           key = generate_key(key_type, secret)
           padding1 = padding + [0] * hop_size
           stream = generate_cipher_stream(key, hop_size * (max_number_of_hops + 1))
+          puts stream.bth
           stream = stream.reverse[0..padding1.size].reverse.unpack('c*')
           new_padding = xor(padding1, stream)
           new_padding
@@ -68,17 +89,46 @@ module Lightning
 
       # Key generation
       def self.generate_key(key_type, secret)
-        OpenSSL::HMAC.digest(OpenSSL::Digest::SHA256.new, key_type, secret.htb)
+        hmac256(key_type, secret.htb)
       end
 
       def self.generate_cipher_stream(key, length)
         # FIXME: ChaCha20Poly1305Legacy encrypt should be 0-counter
-        cipher = RbNaCl::AEAD::ChaCha20Poly1305Legacy.new(key)
-        cipher.encrypt("\x00" * 8, "\x00" * length, '').bth[0..-32].htb
+        # cipher = RbNaCl::AEAD::ChaCha20Poly1305Legacy.new(key)
+        # cipher.encrypt("\x00" * 8, "\x00" * length, '').bth[0..-32].htb
+
+        cipher = RbNaCl::AEAD::ChaCha20Poly1305IETF.new(key)
+        cipher.encrypt("\x00" * 12, "\x00" * length, '').bth[0..-32].htb
+
+        # cipher = OpenSSL::Cipher.new 'chacha'
+        # cipher.encrypt
+        # cipher.iv = "\x00" * 8
+        # cipher.key = key
+        # data = +''
+        # data << cipher.update("\x00" * length)
+        # data << cipher.final
+        # data
       end
 
       def self.xor(a, b)
         a.zip(b).map { |x, y| ((x ^ y) & 0xff) }
+      end
+
+      def self.make_next_packet(payload, associated_data, ephemereal_public_key, shared_secret, packet, filler)
+        routing_info_1 = payload << packet.hmac << packet.routing_info[0...-(PAYLOAD_LENGTH + MAC_LENGTH)]
+        routing_info_2 = xor(routing_info_1, generate_cipher_stream(generate_key('rho', shared_secret), MAX_HOPS * (PAYLOAD_LENGTH + MAC_LENGTH)))
+        next_routing_info = routing_info_2[0...-filler.length] << filler
+
+        next_hmac = mac(generate_key('mu', shared_secret), next_routing_info << associated_data)
+        Packet.new(VERSION, ephemereal_public_key, next_routing_info, next_hmac)
+      end
+
+      def mac(key, message)
+        hmac256(key, message)[0..MAC_LENGTH]
+      end
+
+      def hmac256(key, message)
+        OpenSSL::HMAC.digest(OpenSSL::Digest::SHA256.new, key, message)
       end
     end
   end
