@@ -7,12 +7,16 @@ module Lightning
       def initialize(version, public_key, hops_data, hmac)
         @version = version
         @public_key = public_key
-        @hops_data = []
-        20.times do |i|
-          payload = hops_data[i * 65...i * 65 + 65]
-          @hops_data << Lightning::Onion::HopsData.parse(payload)
-        end
+        @hops_data = hops_data
         @hmac = hmac
+      end
+
+      def to_payload
+        payload = +''
+        payload << [version.bth, public_key].pack('H2H66')
+        payload << [hops_data.map(&:to_payload).join].pack('a1300')
+        payload << hmac
+        payload
       end
     end
   end

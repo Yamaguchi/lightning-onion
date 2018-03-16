@@ -15,6 +15,9 @@ module Lightning
         new(*payload.unpack('a8N2a16'))
       end
 
+      def to_payload
+        [channel_id, amt_to_forward, outgoing_cltv_value, padding].pack('a8N2a16')
+      end
       LAST_NODE = PerHop.parse("\x00" * 32)
     end
   end

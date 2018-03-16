@@ -15,6 +15,10 @@ module Lightning
         per_hop = Lightning::Onion::PerHop.parse(per_hop_payload)
         new(realm, per_hop, hmac)
       end
+
+      def to_payload
+        [realm, per_hop.to_payload, hmac].pack('Ca32a32')
+      end
     end
   end
 end
