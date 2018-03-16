@@ -74,8 +74,7 @@ module Lightning
           key = generate_key(key_type, secret)
           padding1 = padding + [0] * hop_size
           stream = generate_cipher_stream(key, hop_size * (max_number_of_hops + 1))
-          puts stream.bth
-          stream = stream.reverse[0..padding1.size].reverse.unpack('c*')
+          stream = stream.reverse[0...padding1.size].reverse.unpack('c*')
           new_padding = xor(padding1, stream)
           new_padding
         end.pack('C*').bth
@@ -87,27 +86,17 @@ module Lightning
         UM = 0x756d
       end
 
+      def self.hmac256(key, message)
+        OpenSSL::HMAC.digest(OpenSSL::Digest::SHA256.new, key, message)
+      end
+
       # Key generation
       def self.generate_key(key_type, secret)
         hmac256(key_type, secret.htb)
       end
 
       def self.generate_cipher_stream(key, length)
-        # FIXME: ChaCha20Poly1305Legacy encrypt should be 0-counter
-        # cipher = RbNaCl::AEAD::ChaCha20Poly1305Legacy.new(key)
-        # cipher.encrypt("\x00" * 8, "\x00" * length, '').bth[0..-32].htb
-
-        cipher = RbNaCl::AEAD::ChaCha20Poly1305IETF.new(key)
-        cipher.encrypt("\x00" * 12, "\x00" * length, '').bth[0..-32].htb
-
-        # cipher = OpenSSL::Cipher.new 'chacha'
-        # cipher.encrypt
-        # cipher.iv = "\x00" * 8
-        # cipher.key = key
-        # data = +''
-        # data << cipher.update("\x00" * length)
-        # data << cipher.final
-        # data
+        Lightning::Onion::ChaCha20.chacha20_encrypt(key, 0, "\x00" * 12, "\x00" * length)
       end
 
       def self.xor(a, b)
