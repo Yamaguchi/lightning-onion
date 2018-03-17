@@ -7,8 +7,9 @@ module Lightning
       PAYLOAD_LENGTH = 33
       MAC_LENGTH = 32
       MAX_HOPS = 20
+      HOP_LENGTH = PAYLOAD_LENGTH + MAC_LENGTH
 
-      ZERO_HOP = Lightning::Onion::HopData.parse("\x00" * (PAYLOAD_LENGTH + MAC_LENGTH))
+      ZERO_HOP = Lightning::Onion::HopData.parse("\x00" * HOP_LENGTH)
       LAST_PACKET = Lightning::Onion::Packet.new(VERSION, "\x00" * 33, [ZERO_HOP] * MAX_HOPS, "\x00" * MAC_LENGTH)
 
       def self.loop(hop_payloads, keys, shared_secrets, packet, associated_data)
@@ -19,15 +20,15 @@ module Lightning
 
       def self.make_packet(session_key, public_keys, payloads, associated_data)
         ephemereal_public_keys, shared_secrets = compute_ephemereal_public_keys_and_shared_secrets(session_key, public_keys)
-        filler = generate_filler('rho', shared_secrets[0...-1], PAYLOAD_LENGTH + MAC_LENGTH, MAX_HOPS)
+        filler = generate_filler('rho', shared_secrets[0...-1], HOP_LENGTH, MAX_HOPS)
         last_packet = make_next_packet(payloads.last, associated_data, ephemereal_public_keys.last, shared_secrets.last, LAST_PACKET, filler)
         packet = loop(payloads[0...-1], ephemereal_public_keys[0...-1], shared_secrets[0...-1], last_packet, associated_data)
         [packet, shared_secrets.zip(public_keys)]
       end
 
       def self.make_next_packet(payload, associated_data, ephemereal_public_key, shared_secret, packet, filler = '')
-        hops_data1 = payload.htb << packet.hmac << packet.hops_data.map(&:to_payload).join[0...-(PAYLOAD_LENGTH + MAC_LENGTH)]
-        stream = generate_cipher_stream(generate_key('rho', shared_secret), MAX_HOPS * (PAYLOAD_LENGTH + MAC_LENGTH))
+        hops_data1 = payload.htb << packet.hmac << packet.hops_data.map(&:to_payload).join[0...-HOP_LENGTH]
+        stream = generate_cipher_stream(generate_key('rho', shared_secret), MAX_HOPS * HOP_LENGTH)
         hops_data2 = xor(hops_data1.unpack('C*'), stream.unpack('C*'))
         next_hops_data =
           if filler.empty?
@@ -38,7 +39,7 @@ module Lightning
         next_hmac = mac(generate_key('mu', shared_secret), next_hops_data + associated_data.htb.unpack('C*'))
         hops_data = []
         20.times do |i|
-          payload = next_hops_data.pack('C*')[i * 65...i * 65 + 65]
+          payload = next_hops_data.pack('C*')[i * HOP_LENGTH...(i + 1) * HOP_LENGTH]
           hops_data << Lightning::Onion::HopData.parse(payload)
         end
 
@@ -91,7 +92,7 @@ module Lightning
         Bitcoin.sha256(public_key.htb + secret.htb).bth
       end
 
-      def self.generate_filler(key_type, shared_secrets, hop_size, max_number_of_hops = 20)
+      def self.generate_filler(key_type, shared_secrets, hop_size, max_number_of_hops = MAX_HOPS)
         shared_secrets.inject([]) do |padding, secret|
           key = generate_key(key_type, secret)
           padding1 = padding + [0] * hop_size
@@ -126,7 +127,28 @@ module Lightning
       end
 
       def self.mac(key, message)
-        hmac256(key, message.pack('C*'))[0..MAC_LENGTH]
+        hmac256(key, message.pack('C*'))[0...MAC_LENGTH]
+      end
+
+      def self.parse(private_key, raw_packet)
+        packet = Lightning::Onion::Packet.parse(raw_packet)
+        shared_secret = compute_shared_secret(packet.public_key, private_key)
+        rho = generate_key('rho', shared_secret)
+        bin = xor(
+          (packet.hops_data.map(&:to_payload).join + "\x00" * HOP_LENGTH).unpack('C*'),
+          generate_cipher_stream(rho, HOP_LENGTH + MAX_HOPS * HOP_LENGTH).unpack('C*')
+        )
+        payload = bin[0...PAYLOAD_LENGTH].pack('C*')
+        hmac = bin[PAYLOAD_LENGTH...HOP_LENGTH].pack('C*')
+        next_hops_data = bin[HOP_LENGTH..-1]
+
+        next_public_key = make_blind(packet.public_key, compute_blinding_factor(packet.public_key, shared_secret))
+        hops_data = []
+        20.times do |i|
+          hop_payload = next_hops_data.pack('C*')[i * HOP_LENGTH...(i + 1) * HOP_LENGTH]
+          hops_data << Lightning::Onion::HopData.parse(hop_payload)
+        end
+        [payload, Lightning::Onion::Packet.new(VERSION, next_public_key, hops_data, hmac), shared_secret]
       end
     end
   end
