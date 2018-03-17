@@ -3,6 +3,15 @@
 require 'spec_helper'
 
 describe Lightning::Onion::Sphinx do
+  let(:private_keys) do
+    [
+      '4141414141414141414141414141414141414141414141414141414141414141',
+      '4242424242424242424242424242424242424242424242424242424242424242',
+      '4343434343434343434343434343434343434343434343434343434343434343',
+      '4444444444444444444444444444444444444444444444444444444444444444',
+      '4545454545454545454545454545454545454545454545454545454545454545'
+    ]
+  end
   let(:public_keys) do
     [
       '02eec7245d6b7d2ccb30380bfbe2a3648cd7a942653f5aa340edcea1f283686619',
@@ -188,5 +197,28 @@ describe Lightning::Onion::Sphinx do
     end
     subject { described_class.make_packet(session_key, public_keys, payloads, associated_data) }
     it { expect(subject[0].to_payload.bth).to eq expected }
+  end
+
+  describe '.parse' do
+    let(:packet) { Lightning::Onion::Sphinx.make_packet(session_key, public_keys, payloads, associated_data) }
+    it 'parse onion packet correctly' do
+      payload0, next_packet0, = described_class.parse(private_keys[0], packet[0].to_payload)
+      payload1, next_packet1, = described_class.parse(private_keys[1], next_packet0.to_payload)
+      payload2, next_packet2, = described_class.parse(private_keys[2], next_packet1.to_payload)
+      payload3, next_packet3, = described_class.parse(private_keys[3], next_packet2.to_payload)
+      payload4, next_packet4, = described_class.parse(private_keys[4], next_packet3.to_payload)
+      expect(payload0.bth).to eq payloads[0]
+      expect(payload1.bth).to eq payloads[1]
+      expect(payload2.bth).to eq payloads[2]
+      expect(payload3.bth).to eq payloads[3]
+      expect(payload4.bth).to eq payloads[4]
+
+      packets = [next_packet0, next_packet1, next_packet2, next_packet3, next_packet4]
+      expect(packets[0].hmac.bth).to eq '2bdc5227c8eb8ba5fcfc15cfc2aa578ff208c106646d0652cd289c0a37e445bb'
+      expect(packets[1].hmac.bth).to eq '28430b210c0af631ef80dc8594c08557ce4626bdd3593314624a588cc083a1d9'
+      expect(packets[2].hmac.bth).to eq '4e888d0cc6a90e7f857af18ac858834ac251d0d1c196d198df48a0c5bf816803'
+      expect(packets[3].hmac.bth).to eq '42c10947e06bda75b35ac2a9e38005479a6feac51468712e751c71a1dcf3e31b'
+      expect(packets[4].hmac.bth).to eq '0000000000000000000000000000000000000000000000000000000000000000'
+    end
   end
 end
