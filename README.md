@@ -42,6 +42,7 @@ Or install it yourself as:
     irb(main):016:1> ]
     irb(main):017:0> associated_data = '4242424242424242424242424242424242424242424242424242424242424242'
     irb(main):018:0> onion, secrets = Lightning::Onion::Sphinx.make_packet(session_key, public_keys, payloads, associated_data)
+    
 
 
 ### Parse Onion Packet 
