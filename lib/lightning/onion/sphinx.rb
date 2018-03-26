@@ -8,6 +8,8 @@ module Lightning
       MAC_LENGTH = 32
       MAX_HOPS = 20
       HOP_LENGTH = PAYLOAD_LENGTH + MAC_LENGTH
+      MAX_ERROR_PAYLOAD_LENGTH = 256
+      ERROR_PACKET_LENGTH = MAC_LENGTH + MAX_ERROR_PAYLOAD_LENGTH + 2 + 2
 
       ZERO_HOP = Lightning::Onion::HopData.parse("\x00" * HOP_LENGTH)
       LAST_PACKET = Lightning::Onion::Packet.new(VERSION, "\x00" * 33, [ZERO_HOP] * MAX_HOPS, "\x00" * MAC_LENGTH)
@@ -24,6 +26,24 @@ module Lightning
         last_packet = make_next_packet(payloads.last, associated_data, ephemereal_public_keys.last, shared_secrets.last, LAST_PACKET, filler)
         packet = loop(payloads[0...-1], ephemereal_public_keys[0...-1], shared_secrets[0...-1], last_packet, associated_data)
         [packet, shared_secrets.zip(public_keys)]
+      end
+
+      def self.make_error_packet(shared_secret, failure)
+        message = failure.to_payload
+        um = generate_key('um', shared_secret)
+        padlen = MAX_ERROR_PAYLOAD_LENGTH - message.length
+        payload = +''
+        payload << [message.length].pack('n')
+        payload << message
+        payload << [padlen].pack('n')
+        payload << "\x00" * padlen
+        forward_error_packet(mac(um, payload) + payload, shared_secret)
+      end
+
+      def self.forward_error_packet(packet, shared_secret)
+        key = generate_key('ammag', sharedSecret)
+        stream = generate_cipher_stream(key, ERROR_PACKET_LENGTH)
+        xor(packet.unpack('C*'), stream.unpack('C*'))
       end
 
       def self.make_next_packet(payload, associated_data, ephemereal_public_key, shared_secret, packet, filler = '')
@@ -149,6 +169,28 @@ module Lightning
           hops_data << Lightning::Onion::HopData.parse(hop_payload)
         end
         [payload, Lightning::Onion::Packet.new(VERSION, next_public_key, hops_data, hmac), shared_secret]
+      end
+
+      def self.parse_error(packet, shared_secrets)
+        internal_parse_error(packet, shared_secrets)
+      end
+
+      def self.internal_parse_error(packet, shared_secrets)
+        raise RuntimeError unless shared_secrets
+        shared_secret = shared_secrets.last
+        packet1 = forwardErrorPacket(packet, shared_secret[0])
+        if check_mac(secret, packet1)
+          ErrorPacket.new(shared_secret[1], extract_failure_message(packet1))
+        else
+          internal_parse_error(packet1, shared_secret[0...-1])
+        end
+      end
+
+      def self.check_mac(secret, packet)
+        mac = packet[0...MAC_LENGTH]
+        payload = packet[MAC_LENGTH..-1]
+        um = generate_key('um', secret)
+        mac == mac(um, payload)
       end
     end
   end
