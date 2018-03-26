@@ -2,8 +2,9 @@
 
 require 'lightning/onion/version'
 
-require 'rbnacl'
+require 'algebrick'
 require 'bitcoin'
+require 'rbnacl'
 
 module Lightning
   module Onion
