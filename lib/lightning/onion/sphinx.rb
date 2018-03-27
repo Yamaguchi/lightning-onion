@@ -41,7 +41,7 @@ module Lightning
       end
 
       def self.forward_error_packet(packet, shared_secret)
-        key = generate_key('ammag', sharedSecret)
+        key = generate_key('ammag', shared_secret)
         stream = generate_cipher_stream(key, ERROR_PACKET_LENGTH)
         xor(packet.unpack('C*'), stream.unpack('C*'))
       end
@@ -178,7 +178,7 @@ module Lightning
       def self.internal_parse_error(packet, shared_secrets)
         raise RuntimeError unless shared_secrets
         shared_secret = shared_secrets.last
-        packet1 = forwardErrorPacket(packet, shared_secret[0])
+        packet1 = forward_error_packet(packet, shared_secret[0])
         if check_mac(secret, packet1)
           ErrorPacket.new(shared_secret[1], extract_failure_message(packet1))
         else
@@ -191,6 +191,10 @@ module Lightning
         payload = packet[MAC_LENGTH..-1]
         um = generate_key('um', secret)
         mac == mac(um, payload)
+      end
+
+      def self.extract_failure_message(packet)
+        
       end
     end
   end

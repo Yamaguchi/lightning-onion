@@ -10,7 +10,7 @@ module Lightning
   module Onion
     autoload :ChaCha20, 'lightning/onion/chacha20'
     autoload :ErrorPacket, 'lightning/onion/error_packet'
-    autoload :FailureMessage, 'lightning/onion/failure_message'
+    autoload :FailureMessages, 'lightning/onion/failure_messages'
     autoload :HopData, 'lightning/onion/hop_data'
     autoload :PerHop, 'lightning/onion/per_hop'
     autoload :Packet, 'lightning/onion/packet'
