@@ -37,13 +37,13 @@ module Lightning
         payload << message
         payload << [padlen].pack('n')
         payload << "\x00" * padlen
-        forward_error_packet(mac(um, payload) + payload, shared_secret)
+        forward_error_packet(mac(um, payload.unpack('C*')) + payload, shared_secret)
       end
 
       def self.forward_error_packet(packet, shared_secret)
         key = generate_key('ammag', shared_secret)
         stream = generate_cipher_stream(key, ERROR_PACKET_LENGTH)
-        xor(packet.unpack('C*'), stream.unpack('C*'))
+        xor(packet.unpack('C*'), stream.unpack('C*')).pack('C*')
       end
 
       def self.make_next_packet(payload, associated_data, ephemereal_public_key, shared_secret, packet, filler = '')
@@ -146,6 +146,7 @@ module Lightning
         a.zip(b).map { |x, y| ((x ^ y) & 0xff) }
       end
 
+
       def self.mac(key, message)
         hmac256(key, message.pack('C*'))[0...MAC_LENGTH]
       end
@@ -194,7 +195,7 @@ module Lightning
       end
 
       def self.extract_failure_message(packet)
-        
+
       end
     end
   end

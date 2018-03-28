@@ -116,6 +116,12 @@ module Lightning
                   ChannelDisabled,
                   ExpiryTooFar
       end
+      module FailureMessage
+        def to_payload
+          key = name.split('::').last.gsub(/([A-Z]+)([A-Z][a-z])/, '\1_\2').gsub(/([a-z\d])([A-Z])/, '\1_\2').tr("-", "_").downcase
+          TYPES[key.to_sym].to_s(16).htb
+        end
+      end
       autoload :InvalidRealm, 'lib/lightning/onion/failure_message/invalid_realm'
       autoload :TemporaryNodeFailure, 'lib/lightning/onion/failure_message/temporary_node_failure'
       autoload :PermanentNodeFailure, 'lib/lightning/onion/failure_message/permanent_node_failure'
