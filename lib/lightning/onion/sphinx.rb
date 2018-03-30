@@ -195,7 +195,8 @@ module Lightning
       end
 
       def self.extract_failure_message(packet)
-
+        _mac, _len, rest = packet.unpack("a#{MAC_LENGTH * 2}na*")
+        FailureMessages.load(rest)
       end
     end
   end
