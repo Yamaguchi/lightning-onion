@@ -15,10 +15,6 @@ module Lightning
       # new channel update enclosed
       UPDATE = 0x1000
 
-      def to_payload
-        type
-      end
-
       TYPES = {
         invalid_realm: PERM | 1,
         temporary_node_failure: NODE | 2,
@@ -45,54 +41,87 @@ module Lightning
       }.freeze
 
       FailureMessage = Algebrick.type do
-        InvalidRealm = atom
-        TemporaryNodeFailure = atom
-        PermanentNodeFailure = atom
-        RequiredNodeFeatureMissing = atom
+        InvalidRealm = type do
+          fields! type_code: Numeric
+        end
+        TemporaryNodeFailure = type do
+          fields! type_code: Numeric
+        end
+        PermanentNodeFailure = type do
+          fields! type_code: Numeric
+        end
+        RequiredNodeFeatureMissing = type do
+          fields! type_code: Numeric
+        end
         InvalidOnionVersion = type do
-          fields! sha256_of_onion: String
+          fields! type_code: Numeric,
+                  sha256_of_onion: String
         end
         InvalidOnionHmac = type do
-          fields! sha256_of_onion: String
+          fields! type_code: Numeric,
+                  sha256_of_onion: String
         end
         InvalidOnionKey = type do
-          fields! sha256_of_onion: String
+          fields! type_code: Numeric,
+                  sha256_of_onion: String
         end
         TemporaryChannelFailure = type do
-          fields! channel_update: String
+          fields! type_code: Numeric,
+                  channel_update: String
         end
-        PermanentChannelFailure = atom
-        RequiredChannelFeatureMissing = atom
-        UnknownNextPeer = atom
+        PermanentChannelFailure = type do
+          fields! type_code: Numeric
+        end
+        RequiredChannelFeatureMissing = type do
+          fields! type_code: Numeric
+        end
+        UnknownNextPeer = type do
+          fields! type_code: Numeric
+        end
         AmountBelowMinimum = type do
-          fields! htlc_msat: Numeric,
+          fields! type_code: Numeric,
+                  htlc_msat: Numeric,
                   channel_update: String
         end
         FeeInsufficient = type do
-          fields! htlc_msat: Numeric,
+          fields! type_code: Numeric,
+                  htlc_msat: Numeric,
                   channel_update: String
         end
         IncorrectCltvExpiry = type do
-          fields! cltv_expiry: Numeric,
+          fields! type_code: Numeric,
+                  cltv_expiry: Numeric,
                   channel_update: String
         end
         ExpiryTooSoon = type do
-          fields! channel_update: String
-        end
-        UnknownPaymentHash = atom
-        IncorrectPaymentAmount = atom
-        FinalExpiryTooSoon = atom
-        FinalIncorrectCltvExpiry = type do
-          fields! cltv_expiry: Numeric
-        end
-        FinalIncorrectHtlcAmount = type do
-          fields! incoming_htlc_amt: Numeric
-        end
-        ChannelDisabled = type do
-          fields! flags: Numeric,
+          fields! type_code: Numeric,
                   channel_update: String
         end
-        ExpiryTooFar = atom
+        UnknownPaymentHash = type do
+          fields! type_code: Numeric
+        end
+        IncorrectPaymentAmount = type do
+          fields! type_code: Numeric
+        end
+        FinalExpiryTooSoon = type do
+          fields! type_code: Numeric
+        end
+        FinalIncorrectCltvExpiry = type do
+          fields! type_code: Numeric,
+                  cltv_expiry: Numeric
+        end
+        FinalIncorrectHtlcAmount = type do
+          fields! type_code: Numeric,
+                  incoming_htlc_amt: Numeric
+        end
+        ChannelDisabled = type do
+          fields! type_code: Numeric,
+                  flags: String,
+                  channel_update: String
+        end
+        ExpiryTooFar = type do
+          fields! type_code: Numeric
+        end
         variants  InvalidRealm,
                   TemporaryNodeFailure,
                   PermanentNodeFailure,
@@ -116,34 +145,37 @@ module Lightning
                   ChannelDisabled,
                   ExpiryTooFar
       end
-      module FailureMessage
-        def to_payload
-          key = name.split('::').last.gsub(/([A-Z]+)([A-Z][a-z])/, '\1_\2').gsub(/([a-z\d])([A-Z])/, '\1_\2').tr("-", "_").downcase
-          TYPES[key.to_sym].to_s(16).htb
+
+      def self.load(payload)
+        type, = payload.unpack('na*')
+        message_class = FailureMessage.variants.find do |t|
+          TYPES[t.name.split('::').last.snake.to_sym] == type
         end
+        message_class.load(payload)
       end
-      autoload :InvalidRealm, 'lib/lightning/onion/failure_message/invalid_realm'
-      autoload :TemporaryNodeFailure, 'lib/lightning/onion/failure_message/temporary_node_failure'
-      autoload :PermanentNodeFailure, 'lib/lightning/onion/failure_message/permanent_node_failure'
-      autoload :RequiredNodeFeatureMissing, 'lib/lightning/onion/failure_message/required_node_feature_missing'
-      autoload :InvalidOnionVersion, 'lib/lightning/onion/failure_message/invalid_onion_version'
-      autoload :InvalidOnionHmac, 'lib/lightning/onion/failure_message/invalid_onion_hmac'
-      autoload :InvalidOnionKey, 'lib/lightning/onion/failure_message/invalid_onion_key'
-      autoload :TemporaryChannelFailure, 'lib/lightning/onion/failure_message/temporary_channel_failure'
-      autoload :PermanentChannelFailure, 'lib/lightning/onion/failure_message/permanent_channel_failure'
-      autoload :RequiredChannelFeatureMissing, 'lib/lightning/onion/failure_message/required_channel_feature_missing'
-      autoload :UnknownNextPeer, 'lib/lightning/onion/failure_message/unknown_next_peer'
-      autoload :AmountBelowMinimum, 'lib/lightning/onion/failure_message/amount_below_minimum'
-      autoload :FeeInsufficient, 'lib/lightning/onion/failure_message/fee_insufficient'
-      autoload :IncorrectCltvExpiry, 'lib/lightning/onion/failure_message/incorrect_cltv_expiry'
-      autoload :ExpiryTooSoon, 'lib/lightning/onion/failure_message/expiry_too_soon'
-      autoload :UnknownPaymentHash, 'lib/lightning/onion/failure_message/unknown_payment_hash'
-      autoload :IncorrectPaymentAmount, 'lib/lightning/onion/failure_message/incorrect_payment_amount'
-      autoload :FinalExpiryTooSoon, 'lib/lightning/onion/failure_message/final_expiry_too_soon'
-      autoload :FinalIncorrectCltvExpiry, 'lib/lightning/onion/failure_message/final_incorrect_cltv_expiry'
-      autoload :FinalIncorrectHtlcAmount, 'lib/lightning/onion/failure_message/final_incorrect_htlc_amount'
-      autoload :ChannelDisabled, 'lib/lightning/onion/failure_message/channel_disabled'
-      autoload :ExpiryTooFar, 'lib/lightning/onion/failure_message/expiry_too_far'
+
+      require 'lightning/onion/failure_messages/invalid_realm'
+      require 'lightning/onion/failure_messages/temporary_node_failure'
+      require 'lightning/onion/failure_messages/permanent_node_failure'
+      require 'lightning/onion/failure_messages/required_node_feature_missing'
+      require 'lightning/onion/failure_messages/invalid_onion_version'
+      require 'lightning/onion/failure_messages/invalid_onion_hmac'
+      require 'lightning/onion/failure_messages/invalid_onion_key'
+      require 'lightning/onion/failure_messages/temporary_channel_failure'
+      require 'lightning/onion/failure_messages/permanent_channel_failure'
+      require 'lightning/onion/failure_messages/required_channel_feature_missing'
+      require 'lightning/onion/failure_messages/unknown_next_peer'
+      require 'lightning/onion/failure_messages/amount_below_minimum'
+      require 'lightning/onion/failure_messages/fee_insufficient'
+      require 'lightning/onion/failure_messages/incorrect_cltv_expiry'
+      require 'lightning/onion/failure_messages/expiry_too_soon'
+      require 'lightning/onion/failure_messages/unknown_payment_hash'
+      require 'lightning/onion/failure_messages/incorrect_payment_amount'
+      require 'lightning/onion/failure_messages/final_expiry_too_soon'
+      require 'lightning/onion/failure_messages/final_incorrect_cltv_expiry'
+      require 'lightning/onion/failure_messages/final_incorrect_htlc_amount'
+      require 'lightning/onion/failure_messages/channel_disabled'
+      require 'lightning/onion/failure_messages/expiry_too_far'
     end
   end
 end

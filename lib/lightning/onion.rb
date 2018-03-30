@@ -6,6 +6,8 @@ require 'algebrick'
 require 'bitcoin'
 require 'rbnacl'
 
+require 'lightning/utils/string'
+
 module Lightning
   module Onion
     autoload :ChaCha20, 'lightning/onion/chacha20'
