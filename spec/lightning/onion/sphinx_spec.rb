@@ -260,7 +260,7 @@ describe Lightning::Onion::Sphinx do
   # ammag_key = 3761ba4d3e726d8abb16cba5950ee976b84937b61b7ad09e741724d7dee12eb5
   # stream = 3699fd352a948a05f604763c0bca2968d5eaca2b0118602e52e59121f050936c8dd90c24df7dc8cf8f1665e39a6c75e9e2c0900ea245c9ed3b0008148e0ae18bbfaea0c711d67eade980c6f5452e91a06b070bbde68b5494a92575c114660fb53cf04bf686e67ffa4a0f5ae41a59a39a8515cb686db553d25e71e7a97cc2febcac55df2711b6209c502b2f8827b13d3ad2f491c45a0cafe7b4d8d8810e805dee25d676ce92e0619b9c206f922132d806138713a8f69589c18c3fdc5acee41c1234b17ecab96b8c56a46787bba2c062468a13919afc18513835b472a79b2c35f9a91f38eb3b9e998b1000cc4a0dbd62ac1a5cc8102e373526d7e8f3c3a1b4bfb2f8a3947fe350cb89f73aa1bb054edfa9895c0fc971c2b5056dc8665902b51fced6dff80c
   # error packet for node 0: 9c5add3963fc7f6ed7f148623c84134b5647e1306419dbe2174e523fa9e2fbed3a06a19f899145610741c83ad40b7712aefaddec8c6baf7325d92ea4ca4d1df8bce517f7e54554608bf2bd8071a4f52a7a2f7ffbb1413edad81eeea5785aa9d990f2865dc23b4bc3c301a94eec4eabebca66be5cf638f693ec256aec514620cc28ee4a94bd9565bc4d4962b9d3641d4278fb319ed2b84de5b665f307a2db0f7fbb757366067d88c50f7e829138fde4f78d39b5b5802f1b92a8a820865af5cc79f9f30bc3f461c66af95d13e5e1f0381c184572a91dee1c849048a647a1158cf884064deddbf1b0b88dfe2f791428d0ba0f6fb2f04e14081f69165ae66d9297c118f0907705c9c4954a199bae0bb96fad763d690e7daa6cfda59ba7f2c8d11448b604d12d
-  describe '.make_error_packet' do
+  describe 'Returning Errors' do
     # node 4 is returning an error(temporary_node_failure)
     let(:failure_message) { Lightning::Onion::FailureMessages::TemporaryNodeFailure[0x2002] }
 
@@ -274,7 +274,7 @@ describe Lightning::Onion::Sphinx do
       ]
     end
 
-    let(:expected4) do
+    let(:payload4) do
       'a5e6bd0c74cb347f10cce367f949098f2457d14c046fd8a22cb96efb30b0fdcd' \
       'a8cb9168b50f2fd45edd73c1b0c8b33002df376801ff58aaa94000bf8a86f926' \
       '20f343baef38a580102395ae3abf9128d1047a0736ff9b83d456740ebbb4aeb3' \
@@ -286,29 +286,37 @@ describe Lightning::Onion::Sphinx do
       '1228833c1daefc0dedb8cf7c3e37c9c37ebfe42f3225c326e8bcfd338804c145' \
       'b16e34e4'
     end
-
-    let(:expected3) do
+    let(:payload3) do
       'c49a1ce81680f78f5f2000cda36268de34a3f0a0662f55b4e837c83a8773c22aa081bab1616a0011585323930fa5b9fae0c85770a2279ff59ec427ad1bbff9001c0cd1497004bd2a0f68b50704cf6d6a4bf3c8b6a0833399a24b3456961ba00736785112594f65b6b2d44d9f5ea4e49b5e1ec2af978cbe31c67114440ac51a62081df0ed46d4a3df295da0b0fe25c0115019f03f15ec86fabb4c852f83449e812f141a9395b3f70b766ebbd4ec2fae2b6955bd8f32684c15abfe8fd3a6261e52650e8807a92158d9f1463261a925e4bfba44bd20b166d532f0017185c3a6ac7957adefe45559e3072c8dc35abeba835a8cb01a71a15c736911126f27d46a36168ca5ef7dccd4e2886212602b181463e0dd30185c96348f9743a02aca8ec27c0b90dca270'
     end
-    let(:expected2) do
+    let(:payload2) do
       'a5d3e8634cfe78b2307d87c6d90be6fe7855b4f2cc9b1dfb19e92e4b79103f61ff9ac25f412ddfb7466e74f81b3e545563cdd8f5524dae873de61d7bdfccd496af2584930d2b566b4f8d3881f8c043df92224f38cf094cfc09d92655989531524593ec6d6caec1863bdfaa79229b5020acc034cd6deeea1021c50586947b9b8e6faa83b81fbfa6133c0af5d6b07c017f7158fa94f0d206baf12dda6b68f785b773b360fd0497e16cc402d779c8d48d0fa6315536ef0660f3f4e1865f5b38ea49c7da4fd959de4e83ff3ab686f059a45c65ba2af4a6a79166aa0f496bf04d06987b6d2ea205bdb0d347718b9aeff5b61dfff344993a275b79717cd815b6ad4c0beb568c4ac9c36ff1c315ec1119a1993c4b61e6eaa0375e0aaf738ac691abd3263bf937e3'
     end
-    let(:expected1) do
+    let(:payload1) do
       'aac3200c4968f56b21f53e5e374e3a2383ad2b1b6501bbcc45abc31e59b26881b7dfadbb56ec8dae8857add94e6702fb4c3a4de22e2e669e1ed926b04447fc73034bb730f4932acd62727b75348a648a1128744657ca6a4e713b9b646c3ca66cac02cdab44dd3439890ef3aaf61708714f7375349b8da541b2548d452d84de7084bb95b3ac2345201d624d31f4d52078aa0fa05a88b4e20202bd2b86ac5b52919ea305a8949de95e935eed0319cf3cf19ebea61d76ba92532497fcdc9411d06bcd4275094d0a4a3c5d3a945e43305a5a9256e333e1f64dbca5fcd4e03a39b9012d197506e06f29339dfee3331995b21615337ae060233d39befea925cc262873e0530408e6990f1cbd233a150ef7b004ff6166c70c68d9f8c853c1abca640b8660db2921'
     end
-    let(:expected0) do
+    let(:payload0) do
       '9c5add3963fc7f6ed7f148623c84134b5647e1306419dbe2174e523fa9e2fbed3a06a19f899145610741c83ad40b7712aefaddec8c6baf7325d92ea4ca4d1df8bce517f7e54554608bf2bd8071a4f52a7a2f7ffbb1413edad81eeea5785aa9d990f2865dc23b4bc3c301a94eec4eabebca66be5cf638f693ec256aec514620cc28ee4a94bd9565bc4d4962b9d3641d4278fb319ed2b84de5b665f307a2db0f7fbb757366067d88c50f7e829138fde4f78d39b5b5802f1b92a8a820865af5cc79f9f30bc3f461c66af95d13e5e1f0381c184572a91dee1c849048a647a1158cf884064deddbf1b0b88dfe2f791428d0ba0f6fb2f04e14081f69165ae66d9297c118f0907705c9c4954a199bae0bb96fad763d690e7daa6cfda59ba7f2c8d11448b604d12d'
     end
 
-    let(:error4) { Lightning::Onion::Sphinx.make_error_packet(shared_secrets[4], failure_message) }
-    let(:error3) { Lightning::Onion::Sphinx.forward_error_packet(error4, shared_secrets[3]) }
-    let(:error2) { Lightning::Onion::Sphinx.forward_error_packet(error3, shared_secrets[2]) }
-    let(:error1) { Lightning::Onion::Sphinx.forward_error_packet(error2, shared_secrets[1]) }
-    let(:error0) { Lightning::Onion::Sphinx.forward_error_packet(error1, shared_secrets[0]) }
-    it { expect(error4.bth).to eq expected4 }
-    it { expect(error3.bth).to eq expected3 }
-    it { expect(error2.bth).to eq expected2 }
-    it { expect(error1.bth).to eq expected1 }
-    it { expect(error0.bth).to eq expected0 }
+    describe '.make_error_packet' do
+      let(:error4) { Lightning::Onion::Sphinx.make_error_packet(shared_secrets[4], failure_message) }
+      let(:error3) { Lightning::Onion::Sphinx.forward_error_packet(error4, shared_secrets[3]) }
+      let(:error2) { Lightning::Onion::Sphinx.forward_error_packet(error3, shared_secrets[2]) }
+      let(:error1) { Lightning::Onion::Sphinx.forward_error_packet(error2, shared_secrets[1]) }
+      let(:error0) { Lightning::Onion::Sphinx.forward_error_packet(error1, shared_secrets[0]) }
+      it { expect(error4.bth).to eq payload4 }
+      it { expect(error3.bth).to eq payload3 }
+      it { expect(error2.bth).to eq payload2 }
+      it { expect(error1.bth).to eq payload1 }
+      it { expect(error0.bth).to eq payload0 }
+    end
+
+    describe '.parse_error' do
+      let(:node_shared_secrets) { shared_secrets.zip(public_keys).reverse }
+      let(:error_packet) { Lightning::Onion::Sphinx.parse_error(payload0, node_shared_secrets) }
+      it { expect(error_packet.onion_node).to eq public_keys.last }
+      it { expect(error_packet.failure_message).to eq failure_message }
+    end
   end
 end

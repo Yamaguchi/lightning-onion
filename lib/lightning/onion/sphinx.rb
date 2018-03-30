@@ -28,24 +28,6 @@ module Lightning
         [packet, shared_secrets.zip(public_keys)]
       end
 
-      def self.make_error_packet(shared_secret, failure)
-        message = failure.to_payload
-        um = generate_key('um', shared_secret)
-        padlen = MAX_ERROR_PAYLOAD_LENGTH - message.length
-        payload = +''
-        payload << [message.length].pack('n')
-        payload << message
-        payload << [padlen].pack('n')
-        payload << "\x00" * padlen
-        forward_error_packet(mac(um, payload.unpack('C*')) + payload, shared_secret)
-      end
-
-      def self.forward_error_packet(packet, shared_secret)
-        key = generate_key('ammag', shared_secret)
-        stream = generate_cipher_stream(key, ERROR_PACKET_LENGTH)
-        xor(packet.unpack('C*'), stream.unpack('C*')).pack('C*')
-      end
-
       def self.make_next_packet(payload, associated_data, ephemereal_public_key, shared_secret, packet, filler = '')
         hops_data1 = payload.htb << packet.hmac << packet.hops_data.map(&:to_payload).join[0...-HOP_LENGTH]
         stream = generate_cipher_stream(generate_key('rho', shared_secret), MAX_HOPS * HOP_LENGTH)
@@ -172,31 +154,51 @@ module Lightning
         [payload, Lightning::Onion::Packet.new(VERSION, next_public_key, hops_data, hmac), shared_secret]
       end
 
-      def self.parse_error(packet, shared_secrets)
-        internal_parse_error(packet, shared_secrets)
+      def self.make_error_packet(shared_secret, failure)
+        message = failure.to_payload
+        um = generate_key('um', shared_secret)
+        padlen = MAX_ERROR_PAYLOAD_LENGTH - message.length
+        payload = +''
+        payload << [message.length].pack('n')
+        payload << message
+        payload << [padlen].pack('n')
+        payload << "\x00" * padlen
+        forward_error_packet(mac(um, payload.unpack('C*')) + payload, shared_secret)
       end
 
-      def self.internal_parse_error(packet, shared_secrets)
-        raise RuntimeError unless shared_secrets
-        shared_secret = shared_secrets.last
-        packet1 = forward_error_packet(packet, shared_secret[0])
-        if check_mac(secret, packet1)
-          ErrorPacket.new(shared_secret[1], extract_failure_message(packet1))
+      def self.forward_error_packet(payload, shared_secret)
+        key = generate_key('ammag', shared_secret)
+        stream = generate_cipher_stream(key, ERROR_PACKET_LENGTH)
+        xor(payload.unpack('C*'), stream.unpack('C*')).pack('C*')
+      end
+
+      def self.parse_error(payload, node_shared_secrets)
+        raise "invalid length: #{payload.htb.bytesize}" unless payload.htb.bytesize == ERROR_PACKET_LENGTH
+        internal_parse_error(payload.htb, node_shared_secrets)
+      end
+
+      def self.internal_parse_error(payload, node_shared_secrets)
+        raise RuntimeError unless node_shared_secrets
+        node_shared_secret = node_shared_secrets.last
+        next_payload = forward_error_packet(payload, node_shared_secret[0])
+        if check_mac(node_shared_secret[0], next_payload)
+          ErrorPacket.new(node_shared_secret[1], extract_failure_message(next_payload))
         else
-          internal_parse_error(packet1, shared_secret[0...-1])
+          internal_parse_error(next_payload, node_shared_secrets[0...-1])
         end
       end
 
-      def self.check_mac(secret, packet)
-        mac = packet[0...MAC_LENGTH]
-        payload = packet[MAC_LENGTH..-1]
+      def self.check_mac(secret, payload)
+        mac = payload[0...MAC_LENGTH]
+        payload1 = payload[MAC_LENGTH..-1]
         um = generate_key('um', secret)
-        mac == mac(um, payload)
+        mac == mac(um, payload1.unpack('C*'))
       end
 
-      def self.extract_failure_message(packet)
-        _mac, _len, rest = packet.unpack("a#{MAC_LENGTH * 2}na*")
-        FailureMessages.load(rest)
+      def self.extract_failure_message(payload)
+        raise "invalid length: #{payload.bytesize}" unless payload.bytesize == ERROR_PACKET_LENGTH
+        _mac, len, rest = payload.unpack("a#{MAC_LENGTH}na*")
+        FailureMessages.load(rest[0...len])
       end
     end
   end
