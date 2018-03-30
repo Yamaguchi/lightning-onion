@@ -10,6 +10,12 @@ Metrics/LineLength:
 Metrics/MethodLength:
   Max: 30
 
+Metrics/ModuleLength:
+  Max: 500
+
+Metrics/ParameterLists:
+  Max: 7
+
 Style/Documentation:
   Enabled: false
 

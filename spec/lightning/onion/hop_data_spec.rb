@@ -4,7 +4,11 @@ require 'spec_helper'
 
 describe Lightning::Onion::HopData do
   describe '.parse' do
-    let(:payload) { '000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'.htb }
+    let(:payload) do
+      '0000000000000000000000000000000000000000000000000000000000000000' \
+      '0000000000000000000000000000000000000000000000000000000000000000' \
+      '0000'.htb
+    end
     subject { described_class.parse(payload) }
     it { expect(subject.realm).to eq 0 }
     it { expect(subject.per_hop.channel_id).to eq "\x00" * 8 }

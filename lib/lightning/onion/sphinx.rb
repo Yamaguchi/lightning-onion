@@ -14,18 +14,31 @@ module Lightning
       ZERO_HOP = Lightning::Onion::HopData.parse("\x00" * HOP_LENGTH)
       LAST_PACKET = Lightning::Onion::Packet.new(VERSION, "\x00" * 33, [ZERO_HOP] * MAX_HOPS, "\x00" * MAC_LENGTH)
 
-      def self.loop(hop_payloads, keys, shared_secrets, packet, associated_data)
-        return packet if hop_payloads.empty?
-        next_packet = make_next_packet(hop_payloads.last, associated_data, keys.last, shared_secrets.last, packet)
-        loop(hop_payloads[0...-1], keys[0...-1], shared_secrets[0...-1], next_packet, associated_data)
+      def self.make_packet(session_key, public_keys, payloads, associated_data)
+        ephemereal_public_keys, shared_secrets = compute_keys_and_secrets(session_key, public_keys)
+        filler = generate_filler('rho', shared_secrets[0...-1], HOP_LENGTH, MAX_HOPS)
+        last_packet = make_next_packet(
+          payloads.last,
+          associated_data,
+          ephemereal_public_keys.last,
+          shared_secrets.last,
+          LAST_PACKET,
+          filler
+        )
+        packet = internal_make_packet(
+          payloads[0...-1],
+          ephemereal_public_keys[0...-1],
+          shared_secrets[0...-1],
+          last_packet,
+          associated_data
+        )
+        [packet, shared_secrets.zip(public_keys)]
       end
 
-      def self.make_packet(session_key, public_keys, payloads, associated_data)
-        ephemereal_public_keys, shared_secrets = compute_ephemereal_public_keys_and_shared_secrets(session_key, public_keys)
-        filler = generate_filler('rho', shared_secrets[0...-1], HOP_LENGTH, MAX_HOPS)
-        last_packet = make_next_packet(payloads.last, associated_data, ephemereal_public_keys.last, shared_secrets.last, LAST_PACKET, filler)
-        packet = loop(payloads[0...-1], ephemereal_public_keys[0...-1], shared_secrets[0...-1], last_packet, associated_data)
-        [packet, shared_secrets.zip(public_keys)]
+      def self.internal_make_packet(hop_payloads, keys, shared_secrets, packet, associated_data)
+        return packet if hop_payloads.empty?
+        next_packet = make_next_packet(hop_payloads.last, associated_data, keys.last, shared_secrets.last, packet)
+        internal_make_packet(hop_payloads[0...-1], keys[0...-1], shared_secrets[0...-1], next_packet, associated_data)
       end
 
       def self.make_next_packet(payload, associated_data, ephemereal_public_key, shared_secret, packet, filler = '')
@@ -48,16 +61,28 @@ module Lightning
         Lightning::Onion::Packet.new(VERSION, ephemereal_public_key, hops_data, next_hmac)
       end
 
-      def self.compute_ephemereal_public_keys_and_shared_secrets(session_key, public_keys)
+      def self.compute_keys_and_secrets(session_key, public_keys)
         point = ECDSA::Group::Secp256k1.generator
         generator_pubkey = ECDSA::Format::PointOctetString.encode(point, compression: true)
         ephemereal_public_key0 = make_blind(generator_pubkey.bth, session_key)
         secret0 = compute_shared_secret(public_keys[0], session_key)
         blinding_factor0 = compute_blinding_factor(ephemereal_public_key0, secret0)
-        internal_compute_ephemereal_public_keys_and_shared_secrets(session_key, public_keys[1..-1], [ephemereal_public_key0], [blinding_factor0], [secret0])
+        internal_compute_keys_and_secrets(
+          session_key,
+          public_keys[1..-1],
+          [ephemereal_public_key0],
+          [blinding_factor0],
+          [secret0]
+        )
       end
 
-      def self.internal_compute_ephemereal_public_keys_and_shared_secrets(session_key, public_keys, ephemereal_public_keys, blinding_factors, shared_secrets)
+      def self.internal_compute_keys_and_secrets(
+        session_key,
+        public_keys,
+        ephemereal_public_keys,
+        blinding_factors,
+        shared_secrets
+      )
         if public_keys.empty?
           [ephemereal_public_keys, shared_secrets]
         else
@@ -67,7 +92,13 @@ module Lightning
           ephemereal_public_keys << ephemereal_public_key
           blinding_factors << blinding_factor
           shared_secrets << secret
-          internal_compute_ephemereal_public_keys_and_shared_secrets(session_key, public_keys[1..-1], ephemereal_public_keys, blinding_factors, shared_secrets)
+          internal_compute_keys_and_secrets(
+            session_key,
+            public_keys[1..-1],
+            ephemereal_public_keys,
+            blinding_factors,
+            shared_secrets
+          )
         end
       end
 
@@ -105,12 +136,6 @@ module Lightning
         end.pack('C*').bth
       end
 
-      module KeyType
-        RHO = 0x72686F
-        MU = 0x6d75
-        UM = 0x756d
-      end
-
       def self.hmac256(key, message)
         OpenSSL::HMAC.digest(OpenSSL::Digest::SHA256.new, key, message)
       end
@@ -127,7 +152,6 @@ module Lightning
       def self.xor(a, b)
         a.zip(b).map { |x, y| ((x ^ y) & 0xff) }
       end
-
 
       def self.mac(key, message)
         hmac256(key, message.pack('C*'))[0...MAC_LENGTH]
