@@ -12,7 +12,7 @@ Gem::Specification.new do |spec|
 
   spec.summary       = 'Onion routing for the Lightning Network.'
   spec.description   = 'Onion routing for the Lightning Network.'
-  spec.homepage      = 'https://github.com/Yamaguchi/lightningrb-onion'
+  spec.homepage      = 'https://github.com/Yamaguchi/lightning-onion'
   spec.license       = 'MIT'
 
   spec.files         = `git ls-files -z`.split("\x0").reject { |f| f.match(%r{^(test|spec|features)/}) }
