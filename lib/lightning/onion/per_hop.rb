@@ -3,20 +3,20 @@
 module Lightning
   module Onion
     class PerHop
-      attr_accessor :channel_id, :amt_to_forward, :outgoing_cltv_value, :padding
-      def initialize(channel_id, amt_to_forward, outgoing_cltv_value, padding)
-        @channel_id = channel_id
+      attr_accessor :short_channel_id, :amt_to_forward, :outgoing_cltv_value, :padding
+      def initialize(short_channel_id, amt_to_forward, outgoing_cltv_value, padding)
+        @short_channel_id = short_channel_id
         @amt_to_forward = amt_to_forward
         @outgoing_cltv_value = outgoing_cltv_value
         @padding = padding
       end
 
       def self.parse(payload)
-        new(*payload.unpack('a8N2a16'))
+        new(*payload.unpack('Q>2Na16'))
       end
 
       def to_payload
-        [channel_id, amt_to_forward, outgoing_cltv_value, padding].pack('a8N2a16')
+        [short_channel_id, amt_to_forward, outgoing_cltv_value, padding].pack('Q>2Na12')
       end
       LAST_NODE = PerHop.parse("\x00" * 32)
     end

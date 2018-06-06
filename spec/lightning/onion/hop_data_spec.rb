@@ -7,14 +7,15 @@ describe Lightning::Onion::HopData do
     let(:payload) do
       '0000000000000000000000000000000000000000000000000000000000000000' \
       '0000000000000000000000000000000000000000000000000000000000000000' \
-      '0000'.htb
+      '00'.htb
     end
+
     subject { described_class.parse(payload) }
     it { expect(subject.realm).to eq 0 }
-    it { expect(subject.per_hop.channel_id).to eq "\x00" * 8 }
+    it { expect(subject.per_hop.short_channel_id).to eq 0 }
     it { expect(subject.per_hop.amt_to_forward).to eq 0 }
     it { expect(subject.per_hop.outgoing_cltv_value).to eq 0 }
-    it { expect(subject.per_hop.padding).to eq "\x00" * 16 }
+    it { expect(subject.per_hop.padding).to eq "\x00" * 12 }
     it { expect(subject.hmac).to eq "\x00" * 32 }
   end
 end
