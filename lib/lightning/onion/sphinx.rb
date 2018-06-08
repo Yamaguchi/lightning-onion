@@ -4,14 +4,16 @@ module Lightning
   module Onion
     module Sphinx
       VERSION = "\x00"
+      PUBKEY_LENGTH = 33
       PAYLOAD_LENGTH = 33
       MAC_LENGTH = 32
       MAX_HOPS = 20
       HOP_LENGTH = PAYLOAD_LENGTH + MAC_LENGTH
       MAX_ERROR_PAYLOAD_LENGTH = 256
       ERROR_PACKET_LENGTH = MAC_LENGTH + MAX_ERROR_PAYLOAD_LENGTH + 2 + 2
+      PACKET_LENGTH = VERSION.bytesize + PUBKEY_LENGTH + MAX_HOPS * HOP_LENGTH + MAC_LENGTH
 
-      LAST_PACKET = Lightning::Onion::Packet.new(VERSION, "\x00" * 33, '00' * MAX_HOPS * HOP_LENGTH, '00' * MAC_LENGTH)
+      LAST_PACKET = Lightning::Onion::Packet.new(VERSION, "\x00" * PUBKEY_LENGTH, '00' * MAX_HOPS * HOP_LENGTH, '00' * MAC_LENGTH)
 
       def self.make_packet(session_key, public_keys, payloads, associated_data)
         ephemereal_public_keys, shared_secrets = compute_keys_and_secrets(session_key, public_keys)
