@@ -12,13 +12,29 @@ module Lightning
       end
 
       def self.parse(payload)
-        new(*payload.unpack('Q>2Na16'))
-      end
-
-      def to_payload
-        [short_channel_id, amt_to_forward, outgoing_cltv_value, padding].pack('Q>2Na12')
+        new(*payload.unpack('Q>2Na12'))
       end
       LAST_NODE = PerHop.parse("\x00" * 32)
+
+      def to_payload
+        to_a.pack('Q>2Na12')
+      end
+
+      def ==(other)
+        other.class == self.class && other.to_a == to_a
+      end
+
+      alias eql? ==
+
+      def hash
+        to_a.hash
+      end
+
+      protected
+
+      def to_a
+        [short_channel_id, amt_to_forward, outgoing_cltv_value, padding]
+      end
     end
   end
 end

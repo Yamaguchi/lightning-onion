@@ -3,29 +3,27 @@
 module Lightning
   module Onion
     class Packet
-      attr_accessor :version, :public_key, :hops_data, :hmac
-      def initialize(version, public_key, hops_data, hmac)
+      attr_accessor :version, :public_key, :routing_info, :hmac
+      def initialize(version, public_key, routing_info, hmac)
         @version = version
         @public_key = public_key
-        @hops_data = hops_data
+        @routing_info = routing_info
+        raise "invalid size #{routing_info.size}" unless routing_info.size == 1300 * 2
         @hmac = hmac
       end
 
       def self.parse(payload)
-        version, public_key, rest = payload.unpack('H2H66a*')
-        hops_data = []
-        20.times do |i|
-          hops_data << Lightning::Onion::HopData.parse(rest[i * 65...i * 65 + 65])
-        end
-        hmac = rest[21 * 65..-1]
-        new(version, public_key, hops_data, hmac)
+        version, public_key, rest = payload.unpack('aH66a*')
+        routing_info = rest[0...20 * 65].bth
+        hmac = rest[20 * 65..-1].bth
+        new(version, public_key, routing_info, hmac)
       end
 
       def to_payload
         payload = +''
-        payload << [version.bth, public_key].pack('H2H66')
-        payload << [hops_data.map(&:to_payload).join].pack('a1300')
-        payload << hmac
+        payload << [version, public_key].pack('aH66')
+        payload << routing_info.htb
+        payload << hmac.htb
         payload
       end
     end

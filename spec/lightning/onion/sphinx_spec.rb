@@ -25,10 +25,19 @@ describe Lightning::Onion::Sphinx do
   let(:payloads) do
     [
       '000000000000000000000000000000000000000000000000000000000000000000',
-      '000101010101010101000000010000000100000000000000000000000000000000',
-      '000202020202020202000000020000000200000000000000000000000000000000',
-      '000303030303030303000000030000000300000000000000000000000000000000',
-      '000404040404040404000000040000000400000000000000000000000000000000'
+      '000101010101010101000000000000000100000001000000000000000000000000',
+      '000202020202020202000000000000000200000002000000000000000000000000',
+      '000303030303030303000000000000000300000003000000000000000000000000',
+      '000404040404040404000000000000000400000004000000000000000000000000'
+    ]
+  end
+  let(:per_hops) do
+    [
+      Lightning::Onion::PerHop.new(0x0000000000000000, 0, 0, ("00" * 12).htb),
+      Lightning::Onion::PerHop.new(0x0101010101010101, 1, 1, ("00" * 12).htb),
+      Lightning::Onion::PerHop.new(0x0202020202020202, 2, 2, ("00" * 12).htb),
+      Lightning::Onion::PerHop.new(0x0303030303030303, 3, 3, ("00" * 12).htb),
+      Lightning::Onion::PerHop.new(0x0404040404040404, 4, 4, ("00" * 12).htb),
     ]
   end
   let(:associated_data) { '4242424242424242424242424242424242424242424242424242424242424242' }
@@ -153,14 +162,14 @@ describe Lightning::Onion::Sphinx do
     let(:expected) do
       '0002eec7245d6b7d2ccb30380bfbe2a3648cd7a942653f5aa340edcea1f28368' \
       '6619e5f14350c2a76fc232b5e46d421e9615471ab9e0bc887beff8c95fdb878f' \
-      '7b3a716a996c7845c93d90e4ecbb9bde4ece2f69425c99e4bc820e44485455f1' \
-      '35edc0d10f7d61ab590531cf08000179a333a347f8b4072f216400406bdf3bf0' \
-      '38659793d4a1fd7b246979e3150a0a4cb052c9ec69acf0f48c3d39cd55675fe7' \
-      '17cb7d80ce721caad69320c3a469a202f1e468c67eaf7a7cd8226d0fd32f7b48' \
-      '084dca885d56047694762b67021713ca673929c163ec36e04e40ca8e1c6d1756' \
-      '9419d3039d9a1ec866abe044a9ad635778b961fc0776dc832b3a451bd5d35072' \
-      'd2269cf9b040f6b7a7dad84fb114ed413b1426cb96ceaf83825665ed5a1d002c' \
-      '1687f92465b49ed4c7f0218ff8c6c7dd7221d589c65b3b9aaa71a41484b12284' \
+      '7b3a71da571226458c510bbadd1276f045c21c520a07d35da256ef75b4367962' \
+      '437b0dd10f7d61ab590531cf08000178a333a347f8b4072e216400406bdf3bf0' \
+      '38659793a86cae5f52d32f3438527b47a1cfc54285a8afec3a4c9f3323db0c94' \
+      '6f5d4cb2ce721caad69320c3a469a202f3e468c67eaf7a7cda226d0fd32f7b48' \
+      '084dca885d15222e60826d5d971f64172d98e0760154400958f00e86697aa1aa' \
+      '9d41bee8119a1ec866abe044a9ad635778ba61fc0776dc832b39451bd5d35072' \
+      'd2269cf9b040d6ba38b54ec35f81d7fc67678c3be47274f3c4cc472aff005c34' \
+      '69eb3bc140769ed4c7f0218ff8c6c7dd7221d189c65b3b9aaa71a01484b12284' \
       '6c7c7b57e02e679ea8469b70e14fe4f70fee4d87b910cf144be6fe48eef24da4' \
       '75c0b0bcc6565ae82cd3f4e3b24c76eaa5616c6111343306ab35c1fe5ca4a77c' \
       '0e314ed7dba39d6f1e0de791719c241a939cc493bea2bae1c1e932679ea94d29' \
@@ -192,8 +201,8 @@ describe Lightning::Onion::Sphinx do
       '5fe3a56120ae96ea3773631fcb3873aa3abd91bcff00bd38bd43697a2e789e00' \
       'da6077482e7b1b1a677b5afae4c54e6cbdf7377b694eb7d7a5b913476a5be923' \
       '322d3de06060fd5e819635232a2cf4f0731da13b8546d1d6d4f8d75b9fce6c23' \
-      '41a71b0ea6f780df54bfdb0dd5cd9855179f602f9172307c7268724c3618e681' \
-      '7abd793adc214a0dc0bc616816632f27ea336fb56dfd'
+      '41a71b0ea6f780df54bfdb0dd5cd9855179f602f917265f21f9190c70217774a' \
+      '6fbaaa7d63ad64199f4664813b955cff954949076dcf'
     end
     subject { described_class.make_packet(session_key, public_keys, payloads, associated_data) }
     it { expect(subject[0].to_payload.bth).to eq expected }
@@ -202,23 +211,23 @@ describe Lightning::Onion::Sphinx do
   describe '.parse' do
     let(:packet) { Lightning::Onion::Sphinx.make_packet(session_key, public_keys, payloads, associated_data) }
     it 'parse onion packet correctly' do
-      payload0, next_packet0, = described_class.parse(private_keys[0], packet[0].to_payload)
-      payload1, next_packet1, = described_class.parse(private_keys[1], next_packet0.to_payload)
-      payload2, next_packet2, = described_class.parse(private_keys[2], next_packet1.to_payload)
-      payload3, next_packet3, = described_class.parse(private_keys[3], next_packet2.to_payload)
-      payload4, next_packet4, = described_class.parse(private_keys[4], next_packet3.to_payload)
-      expect(payload0.bth).to eq payloads[0]
-      expect(payload1.bth).to eq payloads[1]
-      expect(payload2.bth).to eq payloads[2]
-      expect(payload3.bth).to eq payloads[3]
-      expect(payload4.bth).to eq payloads[4]
+      hop0, next_packet0, = described_class.parse(private_keys[0], packet[0].to_payload)
+      hop1, next_packet1, = described_class.parse(private_keys[1], next_packet0.to_payload)
+      hop2, next_packet2, = described_class.parse(private_keys[2], next_packet1.to_payload)
+      hop3, next_packet3, = described_class.parse(private_keys[3], next_packet2.to_payload)
+      hop4, next_packet4, = described_class.parse(private_keys[4], next_packet3.to_payload)
+      expect(hop0.per_hop).to eq per_hops[0]
+      expect(hop1.per_hop).to eq per_hops[1]
+      expect(hop2.per_hop).to eq per_hops[2]
+      expect(hop3.per_hop).to eq per_hops[3]
+      expect(hop4.per_hop).to eq per_hops[4]
 
       packets = [next_packet0, next_packet1, next_packet2, next_packet3, next_packet4]
-      expect(packets[0].hmac.bth).to eq '2bdc5227c8eb8ba5fcfc15cfc2aa578ff208c106646d0652cd289c0a37e445bb'
-      expect(packets[1].hmac.bth).to eq '28430b210c0af631ef80dc8594c08557ce4626bdd3593314624a588cc083a1d9'
-      expect(packets[2].hmac.bth).to eq '4e888d0cc6a90e7f857af18ac858834ac251d0d1c196d198df48a0c5bf816803'
-      expect(packets[3].hmac.bth).to eq '42c10947e06bda75b35ac2a9e38005479a6feac51468712e751c71a1dcf3e31b'
-      expect(packets[4].hmac.bth).to eq '0000000000000000000000000000000000000000000000000000000000000000'
+      expect(packets[0].hmac).to eq '9b122c79c8aee73ea2cdbc22eca15bbcc9409a4cdd73d2b3fcd4fe26a492d376'
+      expect(packets[1].hmac).to eq '548e58057ab0a0e6c2d8ad8e855d89f9224279a5652895ea14f60bffb81590eb'
+      expect(packets[2].hmac).to eq '0daed5f832ef34ea8d0d2cc0699134287a2739c77152d9edc8fe5ccce7ec838f'
+      expect(packets[3].hmac).to eq '62cc962876e734e089e79eda497077fb411fac5f36afd43329040ecd1e16c6d9'
+      expect(packets[4].hmac).to eq '0000000000000000000000000000000000000000000000000000000000000000'
     end
   end
 

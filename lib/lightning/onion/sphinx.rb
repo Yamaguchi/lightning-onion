@@ -11,8 +11,7 @@ module Lightning
       MAX_ERROR_PAYLOAD_LENGTH = 256
       ERROR_PACKET_LENGTH = MAC_LENGTH + MAX_ERROR_PAYLOAD_LENGTH + 2 + 2
 
-      ZERO_HOP = Lightning::Onion::HopData.parse("\x00" * HOP_LENGTH)
-      LAST_PACKET = Lightning::Onion::Packet.new(VERSION, "\x00" * 33, [ZERO_HOP] * MAX_HOPS, "\x00" * MAC_LENGTH)
+      LAST_PACKET = Lightning::Onion::Packet.new(VERSION, "\x00" * 33, '00' * MAX_HOPS * HOP_LENGTH, '00' * MAC_LENGTH)
 
       def self.make_packet(session_key, public_keys, payloads, associated_data)
         ephemereal_public_keys, shared_secrets = compute_keys_and_secrets(session_key, public_keys)
@@ -35,6 +34,25 @@ module Lightning
         [packet, shared_secrets.zip(public_keys)]
       end
 
+      # @return payload 33bytes payload of the outermost layer of onions,which including realm
+      # @return packet
+      def self.parse(private_key, raw_packet)
+        packet = Lightning::Onion::Packet.parse(raw_packet)
+        shared_secret = compute_shared_secret(packet.public_key, private_key)
+        rho = generate_key('rho', shared_secret)
+        bin = xor(
+          (packet.routing_info + '00' * HOP_LENGTH).htb.unpack('C*'),
+          generate_cipher_stream(rho, HOP_LENGTH + MAX_HOPS * HOP_LENGTH).unpack('C*')
+        )
+        payload = bin[0...HOP_LENGTH].pack('C*')
+        hmac = bin[PAYLOAD_LENGTH...HOP_LENGTH].pack('C*')
+        next_hops_data = bin[HOP_LENGTH..-1]
+
+        next_public_key = make_blind(packet.public_key, compute_blinding_factor(packet.public_key, shared_secret))
+        routing_info = next_hops_data.pack('C*').bth
+        [Lightning::Onion::HopData.parse(payload), Lightning::Onion::Packet.new(VERSION, next_public_key, routing_info, hmac.bth), shared_secret]
+      end
+
       def self.internal_make_packet(hop_payloads, keys, shared_secrets, packet, associated_data)
         return packet if hop_payloads.empty?
         next_packet = make_next_packet(hop_payloads.last, associated_data, keys.last, shared_secrets.last, packet)
@@ -42,8 +60,9 @@ module Lightning
       end
 
       def self.make_next_packet(payload, associated_data, ephemereal_public_key, shared_secret, packet, filler = '')
-        hops_data1 = payload.htb << packet.hmac << packet.hops_data.map(&:to_payload).join[0...-HOP_LENGTH]
-        stream = generate_cipher_stream(generate_key('rho', shared_secret), MAX_HOPS * HOP_LENGTH)
+        hops_data1 = payload.htb << packet.hmac.htb << packet.routing_info.htb[0...-HOP_LENGTH]
+        rho_key = generate_key('rho', shared_secret)
+        stream = generate_cipher_stream(rho_key, MAX_HOPS * HOP_LENGTH)
         hops_data2 = xor(hops_data1.unpack('C*'), stream.unpack('C*'))
         next_hops_data =
           if filler.empty?
@@ -51,14 +70,10 @@ module Lightning
           else
             hops_data2[0...-filler.htb.unpack('C*').size] + filler.htb.unpack('C*')
           end
-        next_hmac = mac(generate_key('mu', shared_secret), next_hops_data + associated_data.htb.unpack('C*'))
-        hops_data = []
-        20.times do |i|
-          payload = next_hops_data.pack('C*')[i * HOP_LENGTH...(i + 1) * HOP_LENGTH]
-          hops_data << Lightning::Onion::HopData.parse(payload)
-        end
-
-        Lightning::Onion::Packet.new(VERSION, ephemereal_public_key, hops_data, next_hmac)
+        mu_key = generate_key('mu', shared_secret)
+        next_hmac = mac(mu_key, next_hops_data + associated_data.htb.unpack('C*'))
+        routing_info = next_hops_data.pack('C*').bth
+        Lightning::Onion::Packet.new(VERSION, ephemereal_public_key, routing_info, next_hmac.bth)
       end
 
       def self.compute_keys_and_secrets(session_key, public_keys)
@@ -155,27 +170,6 @@ module Lightning
 
       def self.mac(key, message)
         hmac256(key, message.pack('C*'))[0...MAC_LENGTH]
-      end
-
-      def self.parse(private_key, raw_packet)
-        packet = Lightning::Onion::Packet.parse(raw_packet)
-        shared_secret = compute_shared_secret(packet.public_key, private_key)
-        rho = generate_key('rho', shared_secret)
-        bin = xor(
-          (packet.hops_data.map(&:to_payload).join + "\x00" * HOP_LENGTH).unpack('C*'),
-          generate_cipher_stream(rho, HOP_LENGTH + MAX_HOPS * HOP_LENGTH).unpack('C*')
-        )
-        payload = bin[0...PAYLOAD_LENGTH].pack('C*')
-        hmac = bin[PAYLOAD_LENGTH...HOP_LENGTH].pack('C*')
-        next_hops_data = bin[HOP_LENGTH..-1]
-
-        next_public_key = make_blind(packet.public_key, compute_blinding_factor(packet.public_key, shared_secret))
-        hops_data = []
-        20.times do |i|
-          hop_payload = next_hops_data.pack('C*')[i * HOP_LENGTH...(i + 1) * HOP_LENGTH]
-          hops_data << Lightning::Onion::HopData.parse(hop_payload)
-        end
-        [payload, Lightning::Onion::Packet.new(VERSION, next_public_key, hops_data, hmac), shared_secret]
       end
 
       def self.make_error_packet(shared_secret, failure)
