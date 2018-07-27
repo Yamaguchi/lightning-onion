@@ -5,11 +5,11 @@ module Lightning
     module FailureMessages
       module FinalIncorrectHtlcAmount
         def to_payload
-          [type_code].pack('n')
+          [type_code, incoming_htlc_amt].pack('nq>')
         end
 
         def self.load(payload)
-          new(*payload.unpack('n'))
+          new(*payload.unpack('nq>'))
         end
       end
     end
