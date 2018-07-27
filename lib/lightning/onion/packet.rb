@@ -29,6 +29,10 @@ module Lightning
         payload << hmac.htb
         payload
       end
+
+      def last?
+        hmac == "\x00" * 32
+      end
     end
   end
 end
