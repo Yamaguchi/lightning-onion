@@ -32,7 +32,7 @@ describe Lightning::Onion::FailureMessages do
     Lightning::Onion::FailureMessages::IncorrectPaymentAmount[PERM | 16],
     Lightning::Onion::FailureMessages::FinalExpiryTooSoon[17],
     Lightning::Onion::FailureMessages::FinalIncorrectCltvExpiry[18, 1_234],
-    Lightning::Onion::FailureMessages::FinalIncorrectHtlcAmount[19],
+    Lightning::Onion::FailureMessages::FinalIncorrectHtlcAmount[19, 123_456],
     Lightning::Onion::FailureMessages::ChannelDisabled[20, '0101', channel_update],
     Lightning::Onion::FailureMessages::ExpiryTooFar[21]
   ].each do |message|
