@@ -5,11 +5,11 @@ module Lightning
     module FailureMessages
       module RequiredNodeFeatureMissing
         def to_payload
-          [type_code].pack('n')
+          [TYPES[:required_node_feature_missing]].pack('n')
         end
 
         def self.load(payload)
-          new(*payload.unpack('n'))
+          RequiredNodeFeatureMissing
         end
       end
     end

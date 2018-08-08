@@ -5,11 +5,11 @@ module Lightning
     module FailureMessages
       module InvalidRealm
         def to_payload
-          [type_code].pack('n')
+          [TYPES[:invalid_realm]].pack('n')
         end
 
-        def self.load(payload)
-          new(*payload.unpack('n'))
+        def self.load(_)
+          InvalidRealm
         end
       end
     end

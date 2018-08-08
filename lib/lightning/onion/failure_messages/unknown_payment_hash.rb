@@ -5,11 +5,11 @@ module Lightning
     module FailureMessages
       module UnknownPaymentHash
         def to_payload
-          [type_code].pack('n')
+          [TYPES[:unknown_payment_hash]].pack('n')
         end
 
-        def self.load(payload)
-          new(*payload.unpack('n'))
+        def self.load(_)
+          UnknownPaymentHash
         end
       end
     end

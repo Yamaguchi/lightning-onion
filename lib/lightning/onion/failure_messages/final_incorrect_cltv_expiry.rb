@@ -5,11 +5,11 @@ module Lightning
     module FailureMessages
       module FinalIncorrectCltvExpiry
         def to_payload
-          [type_code, cltv_expiry].pack('nq>')
+          [TYPES[:final_incorrect_cltv_expiry], cltv_expiry].pack('nq>')
         end
 
         def self.load(payload)
-          new(*payload.unpack('nq>'))
+          new(*payload.unpack('q>'))
         end
       end
     end

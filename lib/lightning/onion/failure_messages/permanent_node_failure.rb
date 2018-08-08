@@ -5,11 +5,11 @@ module Lightning
     module FailureMessages
       module PermanentNodeFailure
         def to_payload
-          [type_code].pack('n')
+          [TYPES[:permanent_node_failure]].pack('n')
         end
 
         def self.load(payload)
-          new(*payload.unpack('n'))
+          PermanentNodeFailure
         end
       end
     end

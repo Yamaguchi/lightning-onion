@@ -5,12 +5,12 @@ module Lightning
     module FailureMessages
       module ExpiryTooSoon
         def to_payload
-          [type_code, channel_update.htb.bytesize].pack('nn') + channel_update.htb
+          [TYPES[:expiry_too_soon], channel_update.htb.bytesize].pack('n2') + channel_update.htb
         end
 
         def self.load(payload)
-          type_code, len, rest = payload.unpack('nnH*')
-          new(type_code, rest[0..len * 2])
+          len, rest = payload.unpack('nH*')
+          new(rest[0..len * 2])
         end
       end
     end

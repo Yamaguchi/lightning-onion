@@ -5,11 +5,11 @@ module Lightning
     module FailureMessages
       module ExpiryTooFar
         def to_payload
-          [type_code].pack('n')
+          [TYPES[:expiry_too_far]].pack('n')
         end
 
         def self.load(payload)
-          new(*payload.unpack('n'))
+          ExpiryTooFar
         end
       end
     end

@@ -5,11 +5,11 @@ module Lightning
     module FailureMessages
       module UnknownNextPeer
         def to_payload
-          [type_code].pack('n')
+          [TYPES[:unknown_next_peer]].pack('n')
         end
 
         def self.load(payload)
-          new(*payload.unpack('n'))
+          UnknownNextPeer
         end
       end
     end

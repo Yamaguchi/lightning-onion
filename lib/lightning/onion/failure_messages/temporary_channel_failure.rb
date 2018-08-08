@@ -5,12 +5,12 @@ module Lightning
     module FailureMessages
       module TemporaryChannelFailure
         def to_payload
-          [type_code, channel_update.bytesize].pack('nn') + channel_update.htb
+          [TYPES[:temporary_channel_failure], channel_update.bytesize].pack('n2') + channel_update.htb
         end
 
         def self.load(payload)
-          type_code, len, rest = payload.unpack('nnH*')
-          new(type_code, rest[0..len * 2])
+          len, rest = payload.unpack('nH*')
+          new(rest[0..len * 2])
         end
       end
     end

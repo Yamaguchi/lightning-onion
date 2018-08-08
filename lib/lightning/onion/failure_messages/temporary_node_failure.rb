@@ -5,11 +5,11 @@ module Lightning
     module FailureMessages
       module TemporaryNodeFailure
         def to_payload
-          [type_code].pack('n')
+          [TYPES[:temporary_node_failure]].pack('n')
         end
 
         def self.load(payload)
-          new(*payload.unpack('n'))
+          TemporaryNodeFailure
         end
       end
     end

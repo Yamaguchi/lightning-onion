@@ -5,11 +5,11 @@ module Lightning
     module FailureMessages
       module RequiredChannelFeatureMissing
         def to_payload
-          [type_code].pack('n')
+          [TYPES[:required_channel_feature_missing]].pack('n')
         end
 
         def self.load(payload)
-          new(*payload.unpack('n'))
+          RequiredChannelFeatureMissing
         end
       end
     end

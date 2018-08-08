@@ -384,7 +384,7 @@ describe Lightning::Onion::Sphinx do
   # b604d12d
   describe 'Returning Errors' do
     # node 4 is returning an error(temporary_node_failure)
-    let(:failure_message) { Lightning::Onion::FailureMessages::TemporaryNodeFailure[0x2002] }
+    let(:failure_message) { Lightning::Onion::FailureMessages::TemporaryNodeFailure }
 
     let(:shared_secrets) do
       [

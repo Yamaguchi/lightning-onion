@@ -41,87 +41,54 @@ module Lightning
       }.freeze
 
       FailureMessage = Algebrick.type do
-        InvalidRealm = type do
-          fields! type_code: Numeric
-        end
-        TemporaryNodeFailure = type do
-          fields! type_code: Numeric
-        end
-        PermanentNodeFailure = type do
-          fields! type_code: Numeric
-        end
-        RequiredNodeFeatureMissing = type do
-          fields! type_code: Numeric
-        end
+        InvalidRealm = atom
+        TemporaryNodeFailure = atom
+        PermanentNodeFailure = atom
+        RequiredNodeFeatureMissing = atom
         InvalidOnionVersion = type do
-          fields! type_code: Numeric,
-                  sha256_of_onion: String
+          fields! sha256_of_onion: String
         end
         InvalidOnionHmac = type do
-          fields! type_code: Numeric,
-                  sha256_of_onion: String
+          fields! sha256_of_onion: String
         end
         InvalidOnionKey = type do
-          fields! type_code: Numeric,
-                  sha256_of_onion: String
+          fields! sha256_of_onion: String
         end
         TemporaryChannelFailure = type do
-          fields! type_code: Numeric,
-                  channel_update: String
+          fields! channel_update: String
         end
-        PermanentChannelFailure = type do
-          fields! type_code: Numeric
-        end
-        RequiredChannelFeatureMissing = type do
-          fields! type_code: Numeric
-        end
-        UnknownNextPeer = type do
-          fields! type_code: Numeric
-        end
+        PermanentChannelFailure = atom
+        RequiredChannelFeatureMissing = atom
+        UnknownNextPeer = atom
         AmountBelowMinimum = type do
-          fields! type_code: Numeric,
-                  htlc_msat: Numeric,
+          fields! htlc_msat: Numeric,
                   channel_update: String
         end
         FeeInsufficient = type do
-          fields! type_code: Numeric,
-                  htlc_msat: Numeric,
+          fields! htlc_msat: Numeric,
                   channel_update: String
         end
         IncorrectCltvExpiry = type do
-          fields! type_code: Numeric,
-                  cltv_expiry: Numeric,
+          fields! cltv_expiry: Numeric,
                   channel_update: String
         end
         ExpiryTooSoon = type do
-          fields! type_code: Numeric,
-                  channel_update: String
+          fields! channel_update: String
         end
-        UnknownPaymentHash = type do
-          fields! type_code: Numeric
-        end
-        IncorrectPaymentAmount = type do
-          fields! type_code: Numeric
-        end
-        FinalExpiryTooSoon = type do
-          fields! type_code: Numeric
-        end
+        UnknownPaymentHash = atom
+        IncorrectPaymentAmount = atom
+        FinalExpiryTooSoon = atom
         FinalIncorrectCltvExpiry = type do
-          fields! type_code: Numeric,
-                  cltv_expiry: Numeric
+          fields! cltv_expiry: Numeric
         end
         FinalIncorrectHtlcAmount = type do
-          fields! type_code: Numeric,
-                  incoming_htlc_amt: Numeric
+          fields! incoming_htlc_amt: Numeric
         end
         ChannelDisabled = type do
-          fields! type_code: Numeric,
-                  flags: String,
+          fields! flags: String,
                   channel_update: String
         end
-        ExpiryTooFar = type do
-          fields! type_code: Numeric
-        end
+        ExpiryTooFar = atom
         variants  InvalidRealm,
                   TemporaryNodeFailure,
                   PermanentNodeFailure,
@@ -147,11 +114,11 @@ module Lightning
       end
 
       def self.load(payload)
-        type, = payload.unpack('na*')
+        type, rest = payload.unpack('na*')
         message_class = FailureMessage.variants.find do |t|
           TYPES[t.name.split('::').last.snake.to_sym] == type
         end
-        message_class.load(payload)
+        message_class.load(rest)
       end
 
       require 'lightning/onion/failure_messages/invalid_realm'

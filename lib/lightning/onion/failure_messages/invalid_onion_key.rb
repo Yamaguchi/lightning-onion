@@ -5,12 +5,12 @@ module Lightning
     module FailureMessages
       module InvalidOnionKey
         def to_payload
-          [type_code, sha256_of_onion.htb.bytesize].pack('nn') + sha256_of_onion.htb
+          [TYPES[:invalid_onion_key], sha256_of_onion.htb.bytesize].pack('n2') + sha256_of_onion.htb
         end
 
         def self.load(payload)
-          type_code, len, rest = payload.unpack('nnH*')
-          new(type_code, rest[0..len * 2])
+          len, rest = payload.unpack('nH*')
+          new(rest[0..len * 2])
         end
       end
     end

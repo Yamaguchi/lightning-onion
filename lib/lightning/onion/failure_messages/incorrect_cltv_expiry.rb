@@ -5,12 +5,12 @@ module Lightning
     module FailureMessages
       module IncorrectCltvExpiry
         def to_payload
-          [type_code, cltv_expiry, channel_update.htb.bytesize].pack('nq>n') + channel_update.htb
+          [TYPES[:incorrect_cltv_expiry], cltv_expiry, channel_update.htb.bytesize].pack('nq>n') + channel_update.htb
         end
 
         def self.load(payload)
-          type_code, cltv_expiry, len, rest = payload.unpack('nq>nH*')
-          new(type_code, cltv_expiry, rest[0..len * 2])
+          cltv_expiry, len, rest = payload.unpack('q>nH*')
+          new(cltv_expiry, rest[0..len * 2])
         end
       end
     end

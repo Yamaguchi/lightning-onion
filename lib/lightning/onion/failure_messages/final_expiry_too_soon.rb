@@ -5,11 +5,11 @@ module Lightning
     module FailureMessages
       module FinalExpiryTooSoon
         def to_payload
-          [type_code].pack('n')
+          [TYPES[:final_expiry_too_soon]].pack('n')
         end
 
-        def self.load(payload)
-          new(*payload.unpack('n'))
+        def self.load(_)
+          FinalExpiryTooSoon
         end
       end
     end

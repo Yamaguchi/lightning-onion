@@ -38,6 +38,7 @@ module Lightning
 
       # @return payload 33bytes payload of the outermost layer of onions,which including realm
       # @return packet
+      # @return Shared Secret
       def self.parse(private_key, raw_packet)
         packet = Lightning::Onion::Packet.parse(raw_packet)
         shared_secret = compute_shared_secret(packet.public_key, private_key)
