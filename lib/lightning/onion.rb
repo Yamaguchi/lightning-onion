@@ -4,7 +4,7 @@ require 'lightning/onion/version'
 
 require 'algebrick'
 require 'bitcoin'
-require 'rbnacl'
+require 'rbnacl/libsodium'
 
 require 'lightning/utils/string'
 
