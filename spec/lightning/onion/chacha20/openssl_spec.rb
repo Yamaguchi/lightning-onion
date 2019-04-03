@@ -2,21 +2,11 @@
 
 require 'spec_helper'
 
-describe Lightning::Onion::ChaCha20 do
+describe Lightning::Onion::ChaCha20::OpenSSL do
   let(:key) { '000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f'.htb }
   let(:counter) { 1 }
 
-  describe '.block' do
-    let(:nonce) { '000000090000004a00000000'.htb }
-    subject { described_class.chacha20_block(key, counter, nonce).bth }
-    let(:expected) do
-      '10f1e7e4d13b5915500fdd1fa32071c4c7d1f4c733c068030422aa9ac3d46c4e' \
-      'd2826446079faa0914c2d705d98b02a2b5129cd1de164eb9cbd083e8a2503c4e'
-    end
-    it { is_expected.to eq expected }
-  end
-
-  describe '.encrypt' do
+  describe '.chacha20_encrypt' do
     let(:nonce) { '000000000000004a00000000'.htb }
     let(:plaintext) do
       '4c616469657320616e642047656e746c656d656e206f662074686520636c6173' \
